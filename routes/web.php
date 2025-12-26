@@ -1,0 +1,52 @@
+<?php
+
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TicketController;
+use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\ReceptionController;
+use Illuminate\Support\Facades\Route;
+
+Route::get('/', function () {
+    return view('welcome');
+});
+
+Route::get('/dashboard', function () {
+    if (auth()->user()->role === 'admin') {
+        return redirect()->route('admin.dashboard');
+    }
+    return redirect()->route('tickets.index');
+})->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+// Supplier Routes
+Route::middleware(['auth', 'role:supplier'])->group(function () {
+    Route::resource('tickets', TicketController::class);
+    Route::get('tickets/{ticket}/print', [TicketController::class, 'print'])->name('tickets.print');
+});
+
+// Admin Routes
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/tickets/{ticket}', [AdminDashboardController::class, 'show'])->name('tickets.show');
+    Route::get('/admin/dashboard/export', [AdminDashboardController::class, 'export'])
+    ->name('dashboard.export');
+});
+
+// Reception Routes (PUBLIC - Tanpa Auth untuk Lobby PC)
+Route::prefix('reception')->name('reception.')->group(function () {
+    // Public routes (tidak perlu login)
+    Route::get('/', [ReceptionController::class, 'index'])->name('index');
+    Route::post('/scan', [ReceptionController::class, 'scan'])->name('scan');
+    Route::get('/confirm/{ticket}', [ReceptionController::class, 'confirm'])->name('confirm');
+    Route::post('/receive/{ticket}', [ReceptionController::class, 'receive'])->name('receive');
+    Route::get('/receipt/{ticket}', [ReceptionController::class, 'receipt'])->name('receipt');
+    Route::get('/receipt/{ticket}/print', [ReceptionController::class, 'printReceipt'])->name('print-receipt');
+    Route::get('/already-received/{ticket}', [ReceptionController::class, 'alreadyReceived'])->name('already-received');
+});
+
+require __DIR__.'/auth.php';
