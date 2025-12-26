@@ -34,7 +34,11 @@ Route::middleware(['auth', 'role:supplier'])->group(function () {
     Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
-    
+    Route::post('/tickets/preview', [TicketController::class, 'preview'])->name('tickets.preview');
+    Route::post('/draft', [TicketController::class, 'saveDraft'])->name('tickets.saveDraft');
+    Route::get('/{ticket}/edit', [TicketController::class, 'edit'])->name('edit');
+    Route::put('/{ticket}', [TicketController::class, 'update'])->name('update');
+    Route::post('/{ticket}/submit', [TicketController::class, 'submitDraft'])->name('submitDraft');
 });
 
 

@@ -21,7 +21,7 @@
                     </div>
                 </div>
             @else
-                <form action="{{ route('tickets.store') }}" method="POST" id="invoiceForm">
+                <form action="{{ route('tickets.preview') }}" method="POST" id="invoiceForm">
                     @csrf
 
                     <!-- Ticket Information -->
@@ -89,7 +89,7 @@
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="p-6 flex gap-3">
                             <button type="submit" id="submitBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
-                                Buat Tiket Invoice
+                                👁️ Preview Tiket
                             </button>
                             <a href="{{ route('tickets.index') }}" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-6 py-2 rounded-lg">
                                 Cancel
