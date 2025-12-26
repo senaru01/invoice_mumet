@@ -96,7 +96,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                     <select name="status" class="w-full border-gray-300 rounded-md shadow-sm text-sm">
                         <option value="">Semua Status</option>
-                        <option value="submitted" {{ request('status') == 'submitted' ? 'selected' : '' }}>Submitted</option>
+                        <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
                         <option value="received" {{ request('status') == 'received' ? 'selected' : '' }}>Received</option>
                     </select>
                 </div>
@@ -125,10 +125,12 @@
                         Filter
                     </button>
 
+                    @if(Route::has('admin.dashboard.export'))
                     <a href="{{ route('admin.dashboard.export', request()->query()) }}"
                         class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">
                         Export
                     </a>
+                    @endif
 
                     <a href="{{ route('admin.dashboard') }}"
                         class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm">
@@ -153,7 +155,6 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -163,8 +164,10 @@
                                 <span class="text-sm font-medium text-indigo-600">{{ $ticket->ticket_number }}</span>
                             </td>
                             <td class="px-6 py-4">
-                                <div class="text-sm font-medium text-gray-900">{{ $ticket->company->name }}</div>
-                                <div class="text-sm text-gray-500">{{ $ticket->company->description }}</div>
+                                <div class="text-sm font-medium text-gray-900">{{ $ticket->company->name ?? 'N/A' }}</div>
+                                @if($ticket->company)
+                                <div class="text-sm text-gray-500">{{ $ticket->company->description ?? '' }}</div>
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {{ $ticket->created_at->format('d/m/Y H:i') }}
@@ -176,9 +179,9 @@
                                 Rp {{ number_format($ticket->total_amount, 0, ',', '.') }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                @if($ticket->status === 'submitted')
+                                @if($ticket->status === 'pending')
                                     <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                        Submitted
+                                        Pending
                                     </span>
                                 @elseif($ticket->status === 'received')
                                     <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
@@ -186,15 +189,10 @@
                                     </span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                <a href="{{ route('admin.tickets.show', $ticket) }}" class="text-indigo-600 hover:text-indigo-900">
-                                    Detail
-                                </a>
-                            </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                            <td colspan="6" class="px-6 py-12 text-center text-gray-500">
                                 Tidak ada data tiket
                             </td>
                         </tr>

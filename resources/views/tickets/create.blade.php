@@ -1,307 +1,387 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-100 leading-tight">
-            {{ __('Buat Tiket Baru') }}
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            Buat Tiket Invoice Baru
         </h2>
     </x-slot>
 
-    <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="bg-slate-800 rounded-lg shadow-xl p-6 border border-slate-600">
-            <form action="{{ route('tickets.store') }}" method="POST" id="ticketForm">
-                @csrf
+    <div class="py-12">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            @if(session('error'))
+                <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                    {{ session('error') }}
+                </div>
+            @endif
 
-                <!-- Hidden Company ID -->
-                <input type="hidden" name="company_id" value="{{ auth()->user()->company_id }}">
-                
-                <!-- Company Info & Delivery Date -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Company (Supplier)</label>
-                        <input type="text" readonly value="{{ auth()->user()->company->name ?? '-' }}" 
-                               class="w-full border-slate-500 bg-slate-700 text-gray-100 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Description (Jenis Usaha)</label>
-                        <input type="text" readonly value="{{ auth()->user()->company->description ?? '-' }}" 
-                               class="w-full border-slate-500 bg-slate-700 text-gray-100 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Rencana Kirim Invoice <span class="text-red-400">*</span></label>
-                        <input type="date" name="planned_delivery_date" id="planned_delivery_date" required 
-                               value="{{ old('planned_delivery_date') }}" min="{{ date('Y-m-d') }}" 
-                               class="w-full border-slate-500 bg-slate-700 text-gray-100 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500">
-                        @error('planned_delivery_date')
-                            <p class="mt-1 text-sm text-red-400">{{ $message }}</p>
-                        @enderror
+            @if($purchaseOrders->count() == 0)
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6 text-center">
+                        <p class="text-gray-600">Belum ada PO yang tersedia untuk di-invoice.</p>
+                        <p class="text-sm text-gray-500 mt-2">Silakan hubungi admin untuk membuat PO.</p>
                     </div>
                 </div>
+            @else
+                <form action="{{ route('tickets.store') }}" method="POST" id="invoiceForm">
+                    @csrf
 
-                <!-- Data Invoice Section -->
-                <div class="mb-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl font-bold text-gray-100">Data Invoice</h3>
-                        <button type="button" onclick="addInvoice()" 
-                                class="px-6 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-semibold shadow-md hover:shadow-lg transition">
-                            + Tambah Invoice
-                        </button>
-                    </div>
+                    <!-- Ticket Information -->
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                        <div class="p-6">
+                            <h3 class="font-semibold text-lg mb-4">Informasi Tiket</h3>
+                            
+                            <div class="grid md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Kirim *</label>
+                                    <input type="date" name="delivery_date" required 
+                                           class="w-full border-gray-300 rounded-lg shadow-sm"
+                                           value="{{ old('delivery_date', date('Y-m-d')) }}">
+                                </div>
+                            </div>
 
-                    <!-- Table wrapper dengan scroll -->
-                    <div class="overflow-x-auto shadow-lg rounded-lg border-2 border-emerald-600">
-                        <div style="min-width: 2400px;">
-                            <table class="w-full border-collapse">
-                                <thead>
-                                    <tr class="bg-emerald-700 text-white">
-                                        <th rowspan="2" class="border border-emerald-600 px-4 py-3 text-xs font-bold" style="width: 50px;">No</th>
-                                        <th rowspan="2" class="border border-emerald-600 px-4 py-3 text-xs font-bold" style="width: 180px;">Company</th>
-                                        <th rowspan="2" class="border border-emerald-600 px-4 py-3 text-xs font-bold" style="width: 180px;">Description</th>
-                                        <th rowspan="2" class="border border-emerald-600 px-4 py-3 text-xs font-bold" style="width: 180px;">No seri F/P</th>
-                                        <th rowspan="2" class="border border-emerald-600 px-4 py-3 text-xs font-bold" style="width: 180px;">no. Invoice</th>
-                                        <th rowspan="2" class="border border-emerald-600 px-4 py-3 text-xs font-bold" style="width: 150px;">Invoice Date</th>
-                                        <th rowspan="2" class="border border-emerald-600 px-4 py-3 text-xs font-bold" style="width: 100px;">Currency</th>
-                                        <th colspan="6" class="border border-emerald-600 px-4 py-2 text-xs font-bold">Amount</th>
-                                        <th rowspan="2" class="border border-emerald-600 px-4 py-3 text-xs font-bold" style="width: 150px;">PPH PASAL 23</th>
-                                        <th rowspan="2" class="border border-emerald-600 px-4 py-3 text-xs font-bold" style="width: 180px;">Grand Total</th>
-                                        <th rowspan="2" class="border border-emerald-600 px-4 py-3 text-xs font-bold" style="width: 150px;">date kirim invoice</th>
-                                        <th rowspan="2" class="border border-emerald-600 px-4 py-3 text-xs font-bold" style="width: 100px;">Aksi</th>
-                                    </tr>
-                                    <tr class="bg-emerald-700 text-white">
-                                        <th class="border border-emerald-600 px-4 py-2 text-xs font-bold" style="width: 150px;">barang</th>
-                                        <th class="border border-emerald-600 px-4 py-2 text-xs font-bold" style="width: 150px;">Jasa</th>
-                                        <th class="border border-emerald-600 px-4 py-2 text-xs font-bold" style="width: 150px;">Discount</th>
-                                        <th class="border border-emerald-600 px-4 py-2 text-xs font-bold" style="width: 150px;">Sub Total (1)</th>
-                                        <th class="border border-emerald-600 px-4 py-2 text-xs font-bold" style="width: 150px;">TAX (11.00%)</th>
-                                        <th class="border border-emerald-600 px-4 py-2 text-xs font-bold" style="width: 150px;">Sub Total (2)</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="invoicesTableBody" class="bg-slate-700">
-                                    <!-- Invoices akan ditambahkan di sini -->
-                                </tbody>
-                            </table>
+                            <!-- Document Checkboxes -->
+                            <div class="border-t pt-4">
+                                <p class="text-sm font-medium text-gray-700 mb-3">Kelengkapan Dokumen:</p>
+                                <div class="grid md:grid-cols-2 gap-3">
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="has_po" value="1" checked class="rounded border-gray-300 text-blue-600">
+                                        <span class="ml-2 text-sm text-gray-700">PO (Purchase Order)</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="has_invoice_doc" value="1" checked class="rounded border-gray-300 text-blue-600">
+                                        <span class="ml-2 text-sm text-gray-700">Invoice</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="has_faktur_pajak" value="1" class="rounded border-gray-300 text-blue-600">
+                                        <span class="ml-2 text-sm text-gray-700">Faktur Pajak</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="checkbox" name="has_surat_jalan" value="1" class="rounded border-gray-300 text-blue-600">
+                                        <span class="ml-2 text-sm text-gray-700">Surat Jalan</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Notes -->
+                            <div class="mt-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Catatan Dokumen</label>
+                                <textarea name="document_notes" rows="2" 
+                                          class="w-full border-gray-300 rounded-lg shadow-sm"
+                                          placeholder="Catatan tambahan untuk kelengkapan dokumen...">{{ old('document_notes') }}</textarea>
+                            </div>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-400 mt-2 italic">* Scroll ke kanan untuk melihat semua kolom</p>
-                </div>
 
-                <!-- Checklist Kelengkapan Dokumen (PINDAH KE BAWAH) -->
-                <div class="mb-6 p-4 bg-slate-700 rounded-lg border border-slate-600">
-                    <h3 class="text-lg font-semibold text-gray-100 mb-4">Checklist Kelengkapan Dokumen</h3>
-                    
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                        <label class="flex items-center space-x-2 cursor-pointer">
-                            <input type="checkbox" name="has_invoice" value="1" {{ old('has_invoice') ? 'checked' : '' }} 
-                                   class="rounded border-gray-400 text-emerald-600 focus:ring-emerald-500 bg-slate-600">
-                            <span class="text-sm text-gray-300">Invoice</span>
-                        </label>
-
-                        <label class="flex items-center space-x-2 cursor-pointer">
-                            <input type="checkbox" name="has_faktur_pajak" value="1" {{ old('has_faktur_pajak') ? 'checked' : '' }} 
-                                   class="rounded border-gray-400 text-emerald-600 focus:ring-emerald-500 bg-slate-600">
-                            <span class="text-sm text-gray-300">Faktur Pajak</span>
-                        </label>
-
-                        <label class="flex items-center space-x-2 cursor-pointer">
-                            <input type="checkbox" name="has_surat_jalan" value="1" {{ old('has_surat_jalan') ? 'checked' : '' }} 
-                                   class="rounded border-gray-400 text-emerald-600 focus:ring-emerald-500 bg-slate-600">
-                            <span class="text-sm text-gray-300">Surat Jalan</span>
-                        </label>
-
-                        <label class="flex items-center space-x-2 cursor-pointer">
-                            <input type="checkbox" name="has_po" value="1" {{ old('has_po') ? 'checked' : '' }} 
-                                   class="rounded border-gray-400 text-emerald-600 focus:ring-emerald-500 bg-slate-600">
-                            <span class="text-sm text-gray-300">PO</span>
-                        </label>
+                    <!-- PO Invoices Container -->
+                    <div id="poInvoicesContainer">
+                        <!-- PO Invoice items will be added here -->
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Keterangan (Jika ada dokumen yang tidak lengkap)</label>
-                        <textarea name="document_notes" rows="2" placeholder="Contoh: PO belum official" 
-                                  class="w-full border-slate-500 bg-slate-600 text-gray-100 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 placeholder-gray-400">{{ old('document_notes') }}</textarea>
+                    <!-- Add PO Button -->
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                        <div class="p-6">
+                            <button type="button" onclick="addPOInvoice()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                                + Tambah PO Invoice
+                            </button>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Action Buttons -->
-                <div class="flex justify-end space-x-4 pt-4 border-t border-slate-600">
-                    <a href="{{ route('tickets.index') }}" 
-                       class="px-6 py-2.5 border-2 border-slate-500 rounded-lg text-gray-300 hover:bg-slate-700 font-semibold transition">
-                        Batal
-                    </a>
-                    <button type="submit" 
-                            class="px-6 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-semibold shadow-md hover:shadow-lg transition">
-                        Simpan & Submit Tiket
-                    </button>
-                </div>
-            </form>
+                    <!-- Submit -->
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="p-6 flex gap-3">
+                            <button type="submit" id="submitBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
+                                Buat Tiket Invoice
+                            </button>
+                            <a href="{{ route('tickets.index') }}" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-6 py-2 rounded-lg">
+                                Cancel
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            @endif
         </div>
     </div>
 
     @push('scripts')
     <script>
-    let invoiceCount = 0;
-    const companyName = "{{ auth()->user()->company->name ?? '-' }}";
-    const companyDescription = "{{ auth()->user()->company->description ?? '-' }}";
+        let poInvoiceCounter = 0;
+        const purchaseOrders = @json($purchaseOrders);
 
-    document.addEventListener('DOMContentLoaded', function() {
-        addInvoice();
-    });
-
-    function addInvoice() {
-        invoiceCount++;
-        const tbody = document.getElementById('invoicesTableBody');
-        
-        const row = document.createElement('tr');
-        row.setAttribute('data-invoice', invoiceCount);
-        row.className = 'hover:bg-slate-600 transition';
-        
-        row.innerHTML = `
-            <td class="border border-slate-600 px-3 py-2 text-center text-sm font-semibold text-gray-200" style="width: 50px;">${invoiceCount}</td>
-            <td class="border border-slate-600 px-3 py-2 text-sm text-gray-200" style="width: 180px;">
-                <span class="company-name block">${companyName}</span>
-            </td>
-            <td class="border border-slate-600 px-3 py-2 text-sm text-gray-200" style="width: 180px;">
-                <span class="company-desc block">${companyDescription}</span>
-            </td>
-            <td class="border border-slate-600 px-2 py-2" style="width: 180px;">
-                <input type="text" name="invoices[${invoiceCount}][no_seri_fp]" required 
-                    class="w-full border-slate-500 bg-slate-600 text-gray-100 focus:ring-emerald-500 focus:border-emerald-500 rounded text-sm px-3 py-1.5" 
-                    placeholder="No Seri F/P" style="min-width: 160px;">
-            </td>
-            <td class="border border-slate-600 px-2 py-2" style="width: 180px;">
-                <input type="text" name="invoices[${invoiceCount}][invoice_number]" required 
-                    class="w-full border-slate-500 bg-slate-600 text-gray-100 focus:ring-emerald-500 focus:border-emerald-500 rounded text-sm px-3 py-1.5" 
-                    placeholder="No Invoice" style="min-width: 160px;">
-            </td>
-            <td class="border border-slate-600 px-2 py-2" style="width: 150px;">
-                <input type="date" name="invoices[${invoiceCount}][invoice_date]" required 
-                    class="w-full border-slate-500 bg-slate-600 text-gray-100 focus:ring-emerald-500 focus:border-emerald-500 rounded text-sm px-2 py-1.5" 
-                    style="min-width: 130px;">
-            </td>
-            <td class="border border-slate-600 px-2 py-2" style="width: 100px;">
-                <select name="invoices[${invoiceCount}][currency]" required 
-                    class="w-full border-slate-500 bg-slate-600 text-gray-100 focus:ring-emerald-500 focus:border-emerald-500 rounded text-sm px-2 py-1.5">
-                    <option value="IDR">IDR</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                </select>
-            </td>
-            <td class="border border-slate-600 px-2 py-2" style="width: 150px;">
-                <input type="number" name="invoices[${invoiceCount}][barang]" step="0.01" value="0" required 
-                    class="invoice-amount w-full border-slate-500 bg-slate-600 text-gray-100 focus:ring-emerald-500 focus:border-emerald-500 rounded text-sm px-3 py-1.5 text-right font-mono" 
-                    data-invoice="${invoiceCount}" placeholder="0.00" style="min-width: 130px;">
-            </td>
-            <td class="border border-slate-600 px-2 py-2" style="width: 150px;">
-                <input type="number" name="invoices[${invoiceCount}][jasa]" step="0.01" value="0" required 
-                    class="invoice-amount w-full border-slate-500 bg-slate-600 text-gray-100 focus:ring-emerald-500 focus:border-emerald-500 rounded text-sm px-3 py-1.5 text-right font-mono" 
-                    data-invoice="${invoiceCount}" placeholder="0.00" style="min-width: 130px;">
-            </td>
-            <td class="border border-slate-600 px-2 py-2" style="width: 150px;">
-                <input type="number" name="invoices[${invoiceCount}][discount]" step="0.01" value="0" required 
-                    class="invoice-amount w-full border-slate-500 bg-slate-600 text-gray-100 focus:ring-emerald-500 focus:border-emerald-500 rounded text-sm px-3 py-1.5 text-right font-mono" 
-                    data-invoice="${invoiceCount}" placeholder="0.00" style="min-width: 130px;">
-            </td>
-            <td class="border border-slate-600 px-3 py-2 bg-slate-600" style="width: 150px;">
-                <span id="subtotal1_${invoiceCount}" class="text-sm text-right block font-semibold font-mono text-gray-200">0.00</span>
-            </td>
-            <td class="border border-slate-600 px-3 py-2 bg-slate-600" style="width: 150px;">
-                <span id="tax_${invoiceCount}" class="text-sm text-right block font-semibold font-mono text-gray-200">0.00</span>
-            </td>
-            <td class="border border-slate-600 px-3 py-2 bg-slate-600" style="width: 150px;">
-                <span id="subtotal2_${invoiceCount}" class="text-sm text-right block font-semibold font-mono text-gray-200">0.00</span>
-            </td>
-            <td class="border border-slate-600 px-3 py-2 bg-amber-900" style="width: 150px;">
-                <span id="pph23_${invoiceCount}" class="text-sm text-right block font-semibold font-mono text-amber-200">0.00</span>
-            </td>
-            <td class="border border-slate-600 px-3 py-2 bg-emerald-900" style="width: 180px;">
-                <span id="grandtotal_${invoiceCount}" class="text-sm text-right block font-bold text-emerald-200 font-mono">0.00</span>
-            </td>
-            <td class="border border-slate-600 px-3 py-2 text-sm text-center text-gray-200" style="width: 150px;">
-                <span class="delivery-date block">-</span>
-            </td>
-            <td class="border border-slate-600 px-2 py-2 text-center" style="width: 100px;">
-                <button type="button" onclick="removeInvoice(${invoiceCount})" 
-                    class="text-red-400 hover:text-white hover:bg-red-600 text-xs font-semibold px-3 py-1.5 border border-red-500 rounded transition whitespace-nowrap">
-                    Hapus
-                </button>
-            </td>
-        `;
-        
-        tbody.appendChild(row);
-        attachCalculationListeners(invoiceCount);
-        updateDeliveryDates();
-    }
-
-    function removeInvoice(id) {
-        const rows = document.querySelectorAll('#invoicesTableBody tr');
-        if (rows.length <= 1) {
-            alert('Minimal harus ada 1 invoice!');
-            return;
-        }
-        
-        const row = document.querySelector(`tr[data-invoice="${id}"]`);
-        if (row) {
-            row.remove();
-            renumberInvoices();
-        }
-    }
-
-    function renumberInvoices() {
-        const rows = document.querySelectorAll('#invoicesTableBody tr');
-        rows.forEach((row, index) => {
-            row.querySelector('td:first-child').textContent = index + 1;
+        // Add first PO on load
+        document.addEventListener('DOMContentLoaded', function() {
+            addPOInvoice();
         });
-    }
 
-    function attachCalculationListeners(invoiceId) {
-        const inputs = document.querySelectorAll(`[data-invoice="${invoiceId}"]`);
-        inputs.forEach(input => {
-            input.addEventListener('input', () => calculateInvoice(invoiceId));
-        });
-    }
+        function addPOInvoice() {
+            const container = document.getElementById('poInvoicesContainer');
+            const poIndex = poInvoiceCounter++;
+            
+            const poInvoiceHtml = `
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6 po-invoice-card" id="poInvoice_${poIndex}">
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-semibold text-lg">Invoice PO #${poIndex + 1}</h3>
+                            ${poIndex > 0 ? `<button type="button" onclick="removePOInvoice(${poIndex})" class="text-red-600 hover:text-red-800">Hapus</button>` : ''}
+                        </div>
 
-    function calculateInvoice(invoiceId) {
-        const barang = parseFloat(document.querySelector(`input[name="invoices[${invoiceId}][barang]"]`).value) || 0;
-        const jasa = parseFloat(document.querySelector(`input[name="invoices[${invoiceId}][jasa]"]`).value) || 0;
-        const discount = parseFloat(document.querySelector(`input[name="invoices[${invoiceId}][discount]"]`).value) || 0;
-        
-        const subtotal1 = barang + jasa - discount;
-        const tax = subtotal1 * 0.11;
-        const subtotal2 = subtotal1 + tax;
-        const pph23 = jasa > 0 ? jasa * 0.02 : 0;
-        const grandTotal = subtotal2 - pph23;
-        
-        document.getElementById(`subtotal1_${invoiceId}`).textContent = formatNumber(subtotal1);
-        document.getElementById(`tax_${invoiceId}`).textContent = formatNumber(tax);
-        document.getElementById(`subtotal2_${invoiceId}`).textContent = formatNumber(subtotal2);
-        document.getElementById(`pph23_${invoiceId}`).textContent = formatNumber(pph23);
-        document.getElementById(`grandtotal_${invoiceId}`).textContent = formatNumber(grandTotal);
-    }
+                        <!-- PO Selection -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Pilih PO *</label>
+                            <select name="po_invoices[${poIndex}][purchase_order_id]" 
+                                    id="poSelect_${poIndex}" 
+                                    required 
+                                    onchange="loadPOItems(${poIndex})"
+                                    class="w-full border-gray-300 rounded-lg shadow-sm">
+                                <option value="">-- Pilih PO --</option>
+                                ${purchaseOrders.map(po => `
+                                    <option value="${po.id}" data-po='${JSON.stringify(po)}'>
+                                        ${po.po_number} - ${new Date(po.po_date).toLocaleDateString('id-ID')} 
+                                        (${po.items.length} items, Status: ${po.status.charAt(0).toUpperCase() + po.status.slice(1)})
+                                    </option>
+                                `).join('')}
+                            </select>
+                        </div>
 
-    function formatNumber(num) {
-        return new Intl.NumberFormat('id-ID', { 
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2 
-        }).format(num);
-    }
+                        <!-- Invoice Details -->
+                        <div class="grid md:grid-cols-3 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nomor Invoice *</label>
+                                <input type="text" 
+                                       name="po_invoices[${poIndex}][invoice_number]" 
+                                       required 
+                                       class="w-full border-gray-300 rounded-lg shadow-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">No. Faktur Pajak</label>
+                                <input type="text" 
+                                       name="po_invoices[${poIndex}][tax_invoice_number]" 
+                                       class="w-full border-gray-300 rounded-lg shadow-sm"
+                                       placeholder="Opsional">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Invoice *</label>
+                                <input type="date" 
+                                       name="po_invoices[${poIndex}][invoice_date]" 
+                                       required 
+                                       value="${new Date().toISOString().split('T')[0]}"
+                                       class="w-full border-gray-300 rounded-lg shadow-sm">
+                            </div>
+                        </div>
 
-    document.getElementById('planned_delivery_date').addEventListener('change', updateDeliveryDates);
+                        <!-- Items Container -->
+                        <div id="itemsSection_${poIndex}" class="hidden">
+                            <h4 class="font-medium mb-3">Pilih Items untuk Invoice</h4>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="w-12 px-3 py-2">
+                                                <input type="checkbox" class="rounded border-gray-300" onclick="selectAllItems(${poIndex}, this.checked)">
+                                            </th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Part Name</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Spec</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Available</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">%</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit Price</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="itemsBody_${poIndex}" class="bg-white divide-y divide-gray-200">
+                                    </tbody>
+                                    <tfoot class="bg-gray-50 font-semibold">
+                                        <tr>
+                                            <td colspan="9" class="px-3 py-2 text-right">Subtotal:</td>
+                                            <td class="px-3 py-2" id="subtotal_${poIndex}">Rp 0</td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="9" class="px-3 py-2 text-right">PPN (11%):</td>
+                                            <td class="px-3 py-2" id="ppn_${poIndex}">Rp 0</td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="9" class="px-3 py-2 text-right">PPh23 (2% - Jasa Only):</td>
+                                            <td class="px-3 py-2 text-green-600" id="pph23_${poIndex}">Rp 0</td>
+                                        </tr>
+                                        <tr class="text-base">
+                                            <td colspan="9" class="px-3 py-2 text-right">Total:</td>
+                                            <td class="px-3 py-2" id="total_${poIndex}">Rp 0</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', poInvoiceHtml);
+        }
 
-    function updateDeliveryDates() {
-        const deliveryDate = document.getElementById('planned_delivery_date').value;
-        if (deliveryDate) {
-            const date = new Date(deliveryDate);
-            const formatted = date.toLocaleDateString('id-ID', { 
-                day: '2-digit', 
-                month: '2-digit', 
-                year: 'numeric' 
+        function removePOInvoice(index) {
+            document.getElementById(`poInvoice_${index}`).remove();
+        }
+
+        function loadPOItems(poIndex) {
+            const select = document.getElementById(`poSelect_${poIndex}`);
+            const selectedOption = select.options[select.selectedIndex];
+            
+            if (!selectedOption.value) {
+                document.getElementById(`itemsSection_${poIndex}`).classList.add('hidden');
+                return;
+            }
+
+            const po = JSON.parse(selectedOption.dataset.po);
+            const itemsBody = document.getElementById(`itemsBody_${poIndex}`);
+            itemsBody.innerHTML = '';
+
+            po.items.forEach((item, itemIndex) => {
+                if (item.remaining_quantity > 0) {
+                    const typeColor = item.transaction_type === 'jasa' ? 'text-purple-600 font-semibold' : 'text-green-600';
+                    const row = `
+                        <tr id="row_${poIndex}_${itemIndex}">
+                            <td class="px-3 py-2">
+                                <input type="checkbox" class="item-checkbox-${poIndex} rounded border-gray-300" 
+                                       onchange="toggleItem(${poIndex}, ${itemIndex}, this.checked)">
+                            </td>
+                            <td class="px-3 py-2">${item.part_name}</td>
+                            <td class="px-3 py-2 text-xs">${item.specification || '-'}</td>
+                            <td class="px-3 py-2">
+                                <span class="${typeColor}">${item.transaction_type.toUpperCase()}</span>
+                            </td>
+                            <td class="px-3 py-2">${parseFloat(item.remaining_quantity).toFixed(2)}</td>
+                            <td class="px-3 py-2">
+                                <input type="number" 
+                                       id="qty_${poIndex}_${itemIndex}"
+                                       name="po_invoices[${poIndex}][items][${itemIndex}][quantity]"
+                                       step="0.01" 
+                                       min="0.01" 
+                                       max="${item.remaining_quantity}"
+                                       value="${item.remaining_quantity}"
+                                       disabled
+                                       class="w-20 border-gray-300 rounded shadow-sm text-sm"
+                                       onchange="calculatePOTotals(${poIndex})">
+                                <input type="hidden" 
+                                       name="po_invoices[${poIndex}][items][${itemIndex}][po_item_id]" 
+                                       value="${item.id}">
+                            </td>
+                            <td class="px-3 py-2">
+                                <select id="payment_${poIndex}_${itemIndex}"
+                                        name="po_invoices[${poIndex}][items][${itemIndex}][payment_type]"
+                                        disabled
+                                        class="w-28 border-gray-300 rounded shadow-sm text-xs"
+                                        onchange="togglePercentage(${poIndex}, ${itemIndex}); calculatePOTotals(${poIndex})">
+                                    <option value="full">Full</option>
+                                    <option value="dp">DP</option>
+                                    <option value="termin_2">Termin 2</option>
+                                    <option value="pelunasan">Pelunasan</option>
+                                </select>
+                            </td>
+                            <td class="px-3 py-2">
+                                <input type="number"
+                                       id="percentage_${poIndex}_${itemIndex}"
+                                       name="po_invoices[${poIndex}][items][${itemIndex}][payment_percentage]"
+                                       step="0.01"
+                                       min="0"
+                                       max="100"
+                                       value="100"
+                                       disabled
+                                       class="w-16 border-gray-300 rounded shadow-sm text-sm hidden"
+                                       onchange="calculatePOTotals(${poIndex})">
+                            </td>
+                            <td class="px-3 py-2 text-xs">Rp ${parseInt(item.unit_price).toLocaleString('id-ID')}</td>
+                            <td class="px-3 py-2 font-medium" id="itemTotal_${poIndex}_${itemIndex}">Rp 0</td>
+                        </tr>
+                    `;
+                    itemsBody.insertAdjacentHTML('beforeend', row);
+                }
             });
-            const dateSpans = document.querySelectorAll('.delivery-date');
-            dateSpans.forEach(span => {
-                span.textContent = formatted;
+
+            document.getElementById(`itemsSection_${poIndex}`).classList.remove('hidden');
+        }
+
+        function selectAllItems(poIndex, checked) {
+            document.querySelectorAll(`.item-checkbox-${poIndex}`).forEach((cb, index) => {
+                cb.checked = checked;
+                toggleItem(poIndex, index, checked);
             });
         }
-    }
+
+        function toggleItem(poIndex, itemIndex, checked) {
+            const qtyInput = document.getElementById(`qty_${poIndex}_${itemIndex}`);
+            const paymentSelect = document.getElementById(`payment_${poIndex}_${itemIndex}`);
+            
+            qtyInput.disabled = !checked;
+            paymentSelect.disabled = !checked;
+            
+            if (checked) {
+                togglePercentage(poIndex, itemIndex);
+            } else {
+                document.getElementById(`percentage_${poIndex}_${itemIndex}`).classList.add('hidden');
+            }
+            
+            calculatePOTotals(poIndex);
+        }
+
+        function togglePercentage(poIndex, itemIndex) {
+            const paymentType = document.getElementById(`payment_${poIndex}_${itemIndex}`).value;
+            const percentageInput = document.getElementById(`percentage_${poIndex}_${itemIndex}`);
+            
+            if (paymentType === 'dp' || paymentType === 'termin_2') {
+                percentageInput.classList.remove('hidden');
+                percentageInput.disabled = false;
+            } else {
+                percentageInput.classList.add('hidden');
+                percentageInput.disabled = true;
+                percentageInput.value = 100;
+            }
+        }
+
+        function calculatePOTotals(poIndex) {
+            const select = document.getElementById(`poSelect_${poIndex}`);
+            const po = JSON.parse(select.options[select.selectedIndex].dataset.po);
+            
+            let subtotal = 0;
+            let pph23Total = 0;
+            
+            po.items.forEach((item, itemIndex) => {
+                const checkbox = document.querySelector(`#row_${poIndex}_${itemIndex} input[type="checkbox"]`);
+                const qtyInput = document.getElementById(`qty_${poIndex}_${itemIndex}`);
+                const paymentType = document.getElementById(`payment_${poIndex}_${itemIndex}`);
+                const percentage = document.getElementById(`percentage_${poIndex}_${itemIndex}`);
+                const totalEl = document.getElementById(`itemTotal_${poIndex}_${itemIndex}`);
+                
+                if (checkbox && checkbox.checked && qtyInput) {
+                    const qty = parseFloat(qtyInput.value) || 0;
+                    let baseTotal = qty * item.unit_price;
+                    
+                    // Apply payment percentage for DP/Termin
+                    if (paymentType.value === 'dp' || paymentType.value === 'termin_2') {
+                        const pct = parseFloat(percentage.value) || 100;
+                        baseTotal = (baseTotal * pct) / 100;
+                    }
+                    
+                    subtotal += baseTotal;
+                    
+                    // Calculate PPh23 only for JASA
+                    if (item.transaction_type === 'jasa') {
+                        pph23Total += baseTotal * 0.02;
+                    }
+                    
+                    totalEl.textContent = 'Rp ' + parseInt(baseTotal).toLocaleString('id-ID');
+                } else if (totalEl) {
+                    totalEl.textContent = 'Rp 0';
+                }
+            });
+
+            const ppn = subtotal * 0.11;
+            const total = subtotal + ppn + pph23Total; // Semua pajak ditambahkan
+
+            document.getElementById(`subtotal_${poIndex}`).textContent = 'Rp ' + parseInt(subtotal).toLocaleString('id-ID');
+            document.getElementById(`ppn_${poIndex}`).textContent = 'Rp ' + parseInt(ppn).toLocaleString('id-ID');
+            document.getElementById(`pph23_${poIndex}`).textContent = 'Rp ' + parseInt(pph23Total).toLocaleString('id-ID');
+            document.getElementById(`total_${poIndex}`).textContent = 'Rp ' + parseInt(total).toLocaleString('id-ID');
+        }
     </script>
     @endpush
 </x-app-layout>

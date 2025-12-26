@@ -18,7 +18,8 @@ class PurchaseOrderItem extends Model
         'remaining_quantity',
         'unit',
         'unit_price',
-        'total_price'
+        'total_price',
+        'transaction_type'
     ];
 
     protected $casts = [

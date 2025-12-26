@@ -4,7 +4,10 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\ReceptionController;
+use App\Http\Controllers\PurchaseOrderController;
+
 use Illuminate\Support\Facades\Route;
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -27,7 +30,13 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'role:supplier'])->group(function () {
     Route::resource('tickets', TicketController::class);
     Route::get('tickets/{ticket}/print', [TicketController::class, 'print'])->name('tickets.print');
+    Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
+    Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
+    Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
+    Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
+    
 });
+
 
 // Admin Routes
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -35,6 +44,11 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/tickets/{ticket}', [AdminDashboardController::class, 'show'])->name('tickets.show');
     Route::get('/admin/dashboard/export', [AdminDashboardController::class, 'export'])
     ->name('dashboard.export');
+    Route::get('/purchase-orders', [PurchaseOrderController::class, 'index'])->name('purchase-orders.index');
+    Route::get('/purchase-orders/import', [PurchaseOrderController::class, 'import'])->name('purchase-orders.import');
+    Route::post('/purchase-orders/import', [PurchaseOrderController::class, 'processImport'])->name('purchase-orders.process-import');
+    Route::get('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show'])->name('purchase-orders.show');
+    Route::delete('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'destroy'])->name('purchase-orders.destroy');
 });
 
 // Reception Routes (PUBLIC - Tanpa Auth untuk Lobby PC)
